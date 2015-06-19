@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1, width=device-width">
+<title>Street View "viewer" demo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:400,300">
+<style>
+html {
+  overflow-y: scroll;
+  background-color: #f5f5f5;
+
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+a {
+  background-color: transparent;
+}
+
+
+
+.Place {
+  position: relative;
+  margin: 0 auto;
+  max-width: 300px;
+  max-height: calc(168.75px + 16.5em);
+  overflow: hidden;
+  color: #333;
+  font: 300 1rem/1.375 Roboto, sans-serif;
+  background-color: #fff;
+  box-shadow: 1px 2px 2px 0 rgba(3, 3, 3, .1);
+}
+.Place::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  content: "";
+  height: 1.03125em;
+  background: linear-gradient(to top, #fff 33.333%, transparent);
+}
+.Place-embed {
+  position: relative;
+  padding: 0 0 56.25%;
+  background-color: #e5e3df;
+  transition: padding-bottom .5s cubic-bezier(.3, 0, 0, 1.3) .5s;
+}
+.Place-photo,
+.Place-pano {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+}
+.Place-photo {
+  cursor: -webkit-grab;
+  cursor: grab;
+}
+.Place-body {
+  border: solid rgba(3, 3, 3, .1);
+  border-width: 0 1px 1px 1px;
+  padding: .6875em 9px calc(.6875em - 1px);
+}
+.Place-name {
+  margin: 0 0 .425em;
+  font-weight: 400;
+  font-size: 1.618em;
+  line-height: 1.275em;
+}
+.Place-description {
+  position: relative;
+  margin: 0;
+  color: #555;
+}
+.Place-description a {
+  color: #069;
+  text-decoration: underline;
+}
+.Place-action {
+  position: absolute;
+  top: .34375em;
+  right: 5px;
+  z-index: 3;
+  border-radius: 50%;
+  width: 2.75em;
+  height: 2.75em;
+  content: "";
+  background: rgba(3, 3, 3, .4) 50% / 37.5% 37.5% no-repeat;
+  cursor: pointer;
+  transition: .25s;
+}
+.Place-action--zoom {
+  background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMiIgaGVpZ2h0PSIyMiI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMuNCAyMC4yTDkgMTQuNSA3LjUgMTNsLTUuNyA1LjZMMSAxNEgwdjcuNWwuNS41SDh2LTFsLTQuNi0uOE0xOC43IDEuOUwxMyA3LjYgMTQuNCA5bDUuNy01LjcuNSA0LjdoMS4yVi42bC0uNS0uNUgxNHYxLjJsNC43LjYiLz48L3N2Zz4=);
+}
+.Place-action--close {
+  background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTcuNSA5TDEgMmwxLTEgNyA2LjVMMTYgMWwxIDEtNi41IDcgNi41IDctMSAxLTctNi41TDIgMTdsLTEtMSA2LjUtN3oiLz48L3N2Zz4=);
+}
+</style>
+
+<div class="Place">
+    <div class="Place-embed">
+        <img class="Place-photo"
+             src="https://maps.googleapis.com/maps/api/streetview?size=300x169&pano=J1l2ebG1vK428dqL7-8N7g&heading=265&pitch=10&fov=100"
+             alt=""
+        >
+        <span class="Place-action Place-action--zoom"></span>
+    </div>
+    <div class="Place-body">
+        <p class="Place-name">Tantallon Castle</p>
+        <p class="Place-description">A formidable stronghold set atop cliffs on the Firth of Forth, Tantallon Castle was the seat of the Douglas Earls of Angus, one of the most powerful baronial families in Scotland. Tantallon served as a noble fortification for more than three centuries and endured three sieges.<br>(<a href="http://www.historic-scotland.gov.uk/index/places/propertyresults/propertyoverview.htm?PropID=PL_284&amp;PropName=Tantallon%20Castle" target="_blank">Source</a>)</p>
+    </div>
+</div>
+
+<script src="peat.min.js"></script>
+<script>
+;(function(d, Peat){
+    var embed = document.querySelector(".Place-embed")
+    var image = document.querySelector(".Place-photo")
+    var action = document.querySelector(".Place-action")
+    var selectedEmbed = "image"
+
+    var p = null
+
+    image.addEventListener("click", toggle)
+    image.addEventListener("dragstart", toggle)
+    action.addEventListener("click", toggle)
+
+    function toggle () {
+        if (p === null) {
+            p = new Peat(image, function (p) {
+                p.map.setOptions(p.getStreetViewPanoramaOptions())
+
+                p.div.classList.add("Place-pano")
+
+                embed.insertBefore(p.div, p.img)
+
+                toggle()
+            })
+
+            return
+        }
+
+        var listener = function (e) {}
+
+        // Resizes the panorama during the transformation of its container
+        var transitionID
+        function transition () {
+            google.maps.event.trigger(p.map, "resize")
+
+            transitionID = requestAnimationFrame(transition)
+        }
+        transitionID = requestAnimationFrame(transition)
+
+        if (selectedEmbed=="image") {
+            image.style.zIndex = "-1"
+            embed.style.paddingBottom = "100%"
+
+            action.classList.remove("Place-action--zoom")
+            action.classList.add("Place-action--close")
+
+            listener = function (e) {
+                // Checks if it's really the end of the `embed`'s transition
+                // and not the end of the transition of one of its children
+                if (e.target===this) {
+                    cancelAnimationFrame(transitionID)
+                    this.removeEventListener(e.type, listener)
+
+                    selectedEmbed = "pano"
+                }
+            }
+        }
+        else {
+            embed.style.paddingBottom = ""
+
+            action.classList.remove("Place-action--close")
+            action.classList.add("Place-action--zoom")
+
+            listener = function (e) {
+                if (e.target===this) {
+                    cancelAnimationFrame(transitionID)
+                    this.removeEventListener(e.type, listener)
+
+                    image.style.zIndex = ""
+
+                    // Re-initialises the StreetView Panorama with its starting options
+                    // to have the same view as the static image in front of it
+                    p.map.setOptions(p.getStreetViewPanoramaOptions())
+
+                    selectedEmbed = "image"
+                }
+            }
+        }
+
+        embed.addEventListener("transitionend", listener)
+    }
+})(document, Peat)
+</script>

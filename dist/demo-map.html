@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<meta name="viewport" content="initial-scale=1, width=device-width">
+<title>Google Static Map demo</title>
+<style>
+html {
+  overflow-y: scroll;
+  background-color: #fff;
+
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+#Map {
+  position: relative;
+  margin: 0 auto;
+  border: 5px solid #eee;
+  max-width: 600px;
+  overflow: hidden;
+}
+#Map::before {
+  display: block;
+  width: 100%;
+  padding: 0 0 62.5%;
+  content: "";
+}
+#Map > * {
+  position: absolute !important;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>
+
+<script type="application/ld+json" id="LinkedData">
+{
+    "@context": "http://schema.org",
+    "@type": "ItemList",
+    "name": "Top 3 Starbucks in Edinburgh",
+    "itemListOrder": "http://schema.org/ItemListOrderDescending",
+    "itemListElement": [
+        "Edinburgh - Princes Street",
+        "Edinburgh - George Street, 106",
+        "Edinburgh - Royal Mile"
+    ]
+}
+</script>
+
+<div id="Map">
+    <img src="https://maps.googleapis.com/maps/api/staticmap?center=Edinburgh+Castle&zoom=14&size=600x375&markers=icon:http%3A%2F%2Fgoo.gl%2FROSWDM%7C55.9510567,-3.2036655%7C55.9498952,-3.1882087%7C55.9531544,-3.1997905"
+         alt=""
+         title="Click on one of these markers to get an interactive map!"
+    >
+</div>
+
+<script src="peat.min.js"></script>
+<script>
+;(function(d, Peat){
+    var MARKER_IMG = "http://goo.gl/ROSWDM"
+    var SELECTED_MARKER_IMG = "http://goo.gl/CrGwcv"
+
+    var linkedData = JSON.parse(document.querySelector("#LinkedData").textContent)
+    var staticmap = document.querySelector("img")
+
+    staticmap.style.cursor = "pointer"
+
+    staticmap.addEventListener("click", function (event) {
+        var fwdEvent = document.createEvent("MouseEvents")
+
+        fwdEvent.initMouseEvent(event.type,
+            true, // canBubble
+            event.cancelable,
+            event.view,
+            event.detail,
+            event.screenX,
+            event.screenY,
+            event.clientX,
+            event.clientY,
+            event.ctrlKey,
+            event.altKey,
+            event.shiftKey,
+            event.metaKey,
+            event.button,
+            null // relatedTarget
+        )
+
+        var p = new Peat(this, function (p) {
+            var data = p.getMapData()
+            var infoWindow = new google.maps.InfoWindow()
+            var selectedMarker = null
+
+            p.map.setOptions(data.mapOptions)
+
+            google.maps.event.addListener(infoWindow, "closeclick", function () {
+                selectedMarker.setIcon(MARKER_IMG)
+            })
+
+            data.markerOptions.forEach( function (opts, i) {
+                opts["title"] =  linkedData["itemListElement"][i]
+                opts["map"] = p.map
+                // Sets the display size of the image in order to have the DOM element represented when charging the map.
+                // Without this step, the event can't be distributed to the marker
+                // because this one is 0x0 as long as the image hasn't been completely loaded.
+                opts["icon"] = {
+                    url: opts["icon"],
+                    size: new google.maps.Size(26, 41)
+                }
+                // Renders marker as a separate DOM element
+                opts["optimized"] = false
+
+                var marker = new google.maps.Marker(opts)
+
+                google.maps.event.addListener(marker, "click", function () {
+                    if (selectedMarker !== null) {
+                        infoWindow.close()
+                        selectedMarker.setIcon(MARKER_IMG)
+                    }
+
+                    infoWindow.setContent(this.getTitle())
+                    infoWindow.open(p.map, this)
+
+                    this.setIcon(SELECTED_MARKER_IMG)
+
+                    selectedMarker = this
+                })
+            })
+
+            p.img.parentNode.replaceChild(p.div, p.img)
+
+            google.maps.event.addListenerOnce(p.map, "tilesloaded", function () {
+                var elem = null
+
+                elem = document.elementFromPoint(fwdEvent.clientX, fwdEvent.clientY)
+                elem.dispatchEvent(fwdEvent)
+            })
+        })
+    })
+})(document, Peat)
+</script>
